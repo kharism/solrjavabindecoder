@@ -73,4 +73,18 @@ func TestReadMapStringLongString(t *testing.T) {
 	}
 	t.Log("Done Unmarshaling")
 	t.Log(kk)
+	keys := []string{"key1", "key2"}
+	values := []string{"value1", "value2veeeeryyyloooooooooooooooooongdaaaaaaaaatttttttaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
+	for i, k := range keys {
+		if _, ok := kk[k]; !ok {
+			t.Log("Key Not Found")
+			t.Fail()
+			return
+		}
+		if kk[k] != values[i] {
+			t.Log("Value Not same")
+			t.Fail()
+			return
+		}
+	}
 }
