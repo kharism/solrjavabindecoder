@@ -92,12 +92,19 @@ func readObject(m interface{}, dis *bytes.Buffer) error {
 		return err
 	}
 	switch tagByte {
+	case BOOL_FALSE:
+		setValue(m, false)
+		return nil
+	case BOOL_TRUE:
+		setValue(m, true)
+		return nil
 	case DOUBLE:
 		dbl, err := readDouble(dis, tagByte)
 		if err != nil {
 			return err
 		}
 		setValue(m, dbl)
+		return nil
 	}
 	return nil
 }

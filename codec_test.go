@@ -66,6 +66,31 @@ func hexStrToByte(inputString string) ([]byte, error) {
 	}
 	return inputBytes, nil
 }
+func TestReadVIntBools(t *testing.T) {
+	inputString := "02a3e0246b65793150c002e0246b65793201e0246b65793302"
+	inputBytes, _ := hexStrToByte(inputString) //[]byte{}
+	var kk map[string]interface{}
+	//kk = ""
+	err := UnmarshalByte(&kk, inputBytes)
+	if err != nil {
+		t.Error(err.Error())
+	}
+	keys := []string{"key1", "key2", "key3"}
+	values := []interface{}{int(5120), true, false}
+	t.Log("Done Unmarshaling")
+	for i, k := range keys {
+		if _, ok := kk[k]; !ok {
+			t.Log("Key Not Found")
+			t.Fail()
+			return
+		}
+		if kk[k] != values[i] {
+			t.Log("Value Not same")
+			t.Fail()
+			return
+		}
+	}
+}
 func TestReadIntFloat(t *testing.T) {
 	inputString := "02a2e0246b6579314ce0246b657932054028cccccccccccd"
 	inputBytes, _ := hexStrToByte(inputString) //[]byte{}
