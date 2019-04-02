@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"math"
 	"reflect"
 
 	tk "github.com/eaciit/toolkit"
@@ -77,12 +78,26 @@ func readObject(m interface{}, dis *bytes.Buffer) error {
 		if err != nil {
 			return err
 		}
+	case SINT >> 5:
+		intRes, err := readSmallInt(dis, tagByte)
+		if err != nil {
+			return err
+		}
+		setValue(m, intRes)
 	case EXTERN_STRING >> 5:
 		fmt.Println("Read ExternString")
 		err = readExternString(m, dis, &tagByte)
 	case ORDERED_MAP >> 5:
 		err = readOrderedMap(m, dis, tagByte)
 		return err
+	}
+	switch tagByte {
+	case DOUBLE:
+		dbl, err := readDouble(dis, tagByte)
+		if err != nil {
+			return err
+		}
+		setValue(m, dbl)
 	}
 	return nil
 }
@@ -143,6 +158,52 @@ func readSize(dis *bytes.Buffer, tagByte byte) (int, error) {
 	}
 	fmt.Println("Total read size", sz)
 	return sz, nil
+}
+func readDouble(dis *bytes.Buffer, tagByte byte) (float64, error) {
+	res, err := readLong(dis, tagByte)
+	if err != nil {
+		return 0, err
+	}
+
+	//int64 bit to float64
+	//b := make([]byte, 8)
+	//binary.LittleEndian.PutUint64(b, res)
+	fmt.Println(res)
+	resDouble := math.Float64frombits(res)
+	return resDouble, nil
+}
+func readLong(dis *bytes.Buffer, tagByte byte) (uint64, error) {
+	var hasil uint64
+	var idx uint
+	for idxC := 56; idxC >= 0; idxC -= 8 {
+		tempByte, err := dis.ReadByte()
+		if err != nil {
+			fmt.Println("CurIDX", idx)
+			return 0, err
+		}
+		hasil |= uint64(tempByte) << uint(idxC)
+	}
+	return hasil, nil
+	// return  (((long)dis.ReadByte()) << 56)
+	//         | (((long)readUnsignedByte()) << 48)
+	//         | (((long)readUnsignedByte()) << 40)
+	//         | (((long)readUnsignedByte()) << 32)
+	//         | (((long)readUnsignedByte()) << 24)
+	//         | (readUnsignedByte() << 16)
+	//         | (readUnsignedByte() << 8)
+	//         | (readUnsignedByte());
+}
+func readSmallInt(dis *bytes.Buffer, tagByte byte) (int, error) {
+	var v int
+	v = int(tagByte) & 0x0F
+	if (tagByte & 0x10) != 0 {
+		aa, err := readVInt(dis, tagByte)
+		if err != nil {
+			return 0, err
+		}
+		v = (aa << 4) | v
+	}
+	return v, nil
 }
 
 // this function is used to read any data that have length more than 255, maybe, not so sure
