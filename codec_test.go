@@ -91,7 +91,32 @@ func TestReadVIntBools(t *testing.T) {
 		}
 	}
 }
-func TestReadIntFloat(t *testing.T) {
+func TestReadFloatBool(t *testing.T) {
+	inputString := "02a3e0246b65793108424ccccde0246b65793201e0246b65793302"
+	inputBytes, _ := hexStrToByte(inputString) //[]byte{}
+	var kk map[string]interface{}
+	//kk = ""
+	err := UnmarshalByte(&kk, inputBytes)
+	if err != nil {
+		t.Error(err.Error())
+	}
+	keys := []string{"key1", "key2", "key3"}
+	values := []interface{}{float32(51.20), true, false}
+	t.Log("Done Unmarshaling")
+	for i, k := range keys {
+		if _, ok := kk[k]; !ok {
+			t.Log("Key Not Found")
+			t.Fail()
+			return
+		}
+		if kk[k] != values[i] {
+			t.Log("Value Not same")
+			t.Fail()
+			return
+		}
+	}
+}
+func TestReadIntDoule(t *testing.T) {
 	inputString := "02a2e0246b6579314ce0246b657932054028cccccccccccd"
 	inputBytes, _ := hexStrToByte(inputString) //[]byte{}
 	var kk map[string]interface{}

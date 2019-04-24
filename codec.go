@@ -92,11 +92,20 @@ func readObject(m interface{}, dis *bytes.Buffer) error {
 		return err
 	}
 	switch tagByte {
+	case NULL:
+		return nil
 	case BOOL_FALSE:
 		setValue(m, false)
 		return nil
 	case BOOL_TRUE:
 		setValue(m, true)
+		return nil
+	case FLOAT:
+		flt, err := readFloat(dis, tagByte)
+		if err != nil {
+			return err
+		}
+		setValue(m, flt)
 		return nil
 	case DOUBLE:
 		dbl, err := readDouble(dis, tagByte)
@@ -166,6 +175,19 @@ func readSize(dis *bytes.Buffer, tagByte byte) (int, error) {
 	fmt.Println("Total read size", sz)
 	return sz, nil
 }
+func readFloat(dis *bytes.Buffer, tagByte byte) (float32, error) {
+	res, err := readInt(dis, tagByte)
+	if err != nil {
+		return 0, err
+	}
+
+	//int64 bit to float64
+	//b := make([]byte, 8)
+	//binary.LittleEndian.PutUint64(b, res)
+	fmt.Println(res)
+	resFloat := math.Float32frombits(res)
+	return resFloat, nil
+}
 func readDouble(dis *bytes.Buffer, tagByte byte) (float64, error) {
 	res, err := readLong(dis, tagByte)
 	if err != nil {
@@ -178,6 +200,19 @@ func readDouble(dis *bytes.Buffer, tagByte byte) (float64, error) {
 	fmt.Println(res)
 	resDouble := math.Float64frombits(res)
 	return resDouble, nil
+}
+func readInt(dis *bytes.Buffer, tagByte byte) (uint32, error) {
+	var hasil uint32
+	//var idx uint
+	for idxC := 24; idxC >= 0; idxC -= 8 {
+		tempByte, err := dis.ReadByte()
+		if err != nil {
+			//fmt.Println("CurIDX", idx)
+			return 0, err
+		}
+		hasil |= uint32(tempByte) << uint(idxC)
+	}
+	return hasil, nil
 }
 func readLong(dis *bytes.Buffer, tagByte byte) (uint64, error) {
 	var hasil uint64
