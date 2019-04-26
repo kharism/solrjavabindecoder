@@ -1,17 +1,82 @@
 package solrjavacodec
 
 import (
+	"encoding/json"
 	"io/ioutil"
+	"net/http"
+	"reflect"
 	"strconv"
 	"testing"
+
+	tk "github.com/eaciit/toolkit"
 )
 
-func TestRead1(t *testing.T) {
+func BenchmarkDecodeJson(b *testing.B) {
+	client := http.Client{}
+	obj := map[string]interface{}{}
+	for i := 0; i < b.N; i++ {
+		req, _ := http.NewRequest("GET", "http://localhost:8983/solr/edmsrc/select?indent=off&q=*:*&wt=json", nil)
+		resp, _ := client.Do(req)
+		respByte, _ := ioutil.ReadAll(resp.Body)
+		resp.Body.Close()
+		json.Unmarshal(respByte, &obj)
+		tk.JsonStringIndent(obj, " ")
+	}
+}
+func BenchmarkDecodeBin(b *testing.B) {
+	client := http.Client{}
+	obj := map[string]interface{}{}
+	for i := 0; i < b.N; i++ {
+		req, _ := http.NewRequest("GET", "http://localhost:8983/solr/edmsrc/select?indent=off&q=*:*&wt=javabin", nil)
+		resp, _ := client.Do(req)
+		respByte, _ := ioutil.ReadAll(resp.Body)
+		resp.Body.Close()
+		UnmarshalByte(&obj, respByte)
+
+	}
+}
+
+func TestEqual(t *testing.T) {
 	t.Skip()
-	bytes, _ := ioutil.ReadFile("select_javabin.bin")
+	client := http.Client{}
+	client2 := http.Client{}
+
+	obj1 := map[string]interface{}{}
+	obj2 := map[string]interface{}{}
+
+	urlJson := "http://localhost:8983/solr/edmsrc/select?indent=off&q=*:*&wt=json"
+	urlJavabin := "http://localhost:8983/solr/edmsrc/select?indent=off&q=*:*&wt=javabin"
+
+	reqJson, _ := http.NewRequest("GET", urlJson, nil)
+	reqJavabin, _ := http.NewRequest("GET", urlJavabin, nil)
+
+	respJson, _ := client.Do(reqJson)
+	respJavabin, _ := client2.Do(reqJavabin)
+
+	bytejson, _ := ioutil.ReadAll(respJson.Body)
+	respJson.Body.Close()
+	bytejavabin, _ := ioutil.ReadAll(respJavabin.Body)
+	respJavabin.Body.Close()
+
+	json.Unmarshal(bytejson, &obj1)
+	UnmarshalByte(&obj2, bytejavabin)
+	if !reflect.DeepEqual(obj1, obj2) {
+		t.Error()
+		t.Error(tk.JsonStringIndent(obj1, " "))
+		t.Error(tk.JsonStringIndent(obj2, " "))
+	}
+}
+func TestRead1(t *testing.T) {
+	//t.Skip()
+	bytes, err := ioutil.ReadFile("sampleJavabin")
+	if err != nil {
+		t.Log(err.Error())
+	}
+
 	//fd,_:=os.Open("select_javabin.bin")
 	data := map[string]interface{}{}
 	UnmarshalByte(&data, bytes)
+	t.Log(tk.JsonStringIndent(data, " "))
 }
 func TestReadString(t *testing.T) {
 	inputBytes := []byte{0x02, 0xe0, 0x2e, 0x72, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x48, 0x65, 0x61, 0x64, 0x65, 0x72}
