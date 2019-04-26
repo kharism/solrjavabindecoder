@@ -37,7 +37,7 @@ func BenchmarkDecodeBin(b *testing.B) {
 }
 
 func TestEqual(t *testing.T) {
-	t.Skip()
+	// t.Skip()
 	client := http.Client{}
 	client2 := http.Client{}
 
@@ -45,7 +45,7 @@ func TestEqual(t *testing.T) {
 	obj2 := map[string]interface{}{}
 
 	urlJson := "http://localhost:8983/solr/edmsrc/select?indent=off&q=*:*&wt=json"
-	urlJavabin := "http://localhost:8983/solr/edmsrc/select?indent=off&q=*:*&wt=javabin"
+	urlJavabin := "http://localhost:8983/solr/edmsrc/select?q=*:*&wt=javabin"
 
 	reqJson, _ := http.NewRequest("GET", urlJson, nil)
 	reqJavabin, _ := http.NewRequest("GET", urlJavabin, nil)
@@ -69,6 +69,18 @@ func TestEqual(t *testing.T) {
 func TestRead1(t *testing.T) {
 	//t.Skip()
 	bytes, err := ioutil.ReadFile("sampleJavabin")
+	if err != nil {
+		t.Log(err.Error())
+	}
+
+	//fd,_:=os.Open("select_javabin.bin")
+	data := map[string]interface{}{}
+	UnmarshalByte(&data, bytes)
+	t.Log(tk.JsonStringIndent(data, " "))
+}
+func TestRead2(t *testing.T) {
+	//t.Skip()
+	bytes, err := ioutil.ReadFile("sampleJavabin2")
 	if err != nil {
 		t.Log(err.Error())
 	}

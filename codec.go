@@ -2,6 +2,7 @@ package solrjavacodec
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"math"
 	"reflect"
@@ -52,13 +53,18 @@ func UnmarshalByte(m interface{}, data []byte) error {
 	if !tk.IsPointer(m) {
 		return errorlib.Error(packageName, modCursorDecode, "Fetch", "Model object should be pointer")
 	}
-	buff := bytes.NewBuffer(data)
-	buff.ReadByte() //ambil versi, gak dipakai dulu
-	// fmt.Println("LLLL")
-	return readVal(m, buff)
+	dataStream := bytes.NewBuffer(data)
+	return UnmarshalStream(m, dataStream)
 }
 func UnmarshalStream(m interface{}, dataStream *bytes.Buffer) error {
-	e := readVal(m, dataStream)
+	if !tk.IsPointer(m) {
+		return errorlib.Error(packageName, modCursorDecode, "Fetch", "Model object should be pointer")
+	}
+	//buff := bytes.NewBuffer([]])
+	dataStream.ReadByte() //ambil versi, gak dipakai dulu
+	// fmt.Println("LLLL")
+	stringCache := []string{}
+	e := readVal(m, dataStream, &stringCache)
 	if e == io.EOF {
 		return nil
 	} else {
@@ -66,12 +72,19 @@ func UnmarshalStream(m interface{}, dataStream *bytes.Buffer) error {
 	}
 }
 
-func readVal(m interface{}, reader *bytes.Buffer) error {
-	return readObject(m, reader)
+func readVal(m interface{}, reader *bytes.Buffer, stringCache *[]string) error {
+	return readObject(m, reader, stringCache)
 }
-func readObject(m interface{}, dis *bytes.Buffer) error {
+
+var end_obj_struct struct {
+	ISEND bool
+}
+
+const END_OBJ = "HELLOSOLDER"
+
+func readObject(m interface{}, dis *bytes.Buffer, stringCache *[]string) error {
 	tagByte, err := dis.ReadByte()
-	// fmt.Printf("TAG %x\n", tagByte)
+	fmt.Printf("TAG %x\n", tagByte)
 	if err != nil {
 		return err
 	}
@@ -79,7 +92,7 @@ func readObject(m interface{}, dis *bytes.Buffer) error {
 	switch checkType {
 	case STR >> 5:
 		err = readStr(dis, readStringAsCharSeq, &tagByte, m)
-		// fmt.Println("Read String", *(m.(*interface{})))
+		fmt.Println("Read String", *(m.(*interface{})))
 		if err != nil {
 			return err
 		}
@@ -98,22 +111,22 @@ func readObject(m interface{}, dis *bytes.Buffer) error {
 		setValue(m, longRes)
 	case ARR >> 5:
 		// fmt.Println("Read ARR")
-		err := readArray(m, dis, &tagByte)
+		err := readArray(m, dis, &tagByte, stringCache)
 		if err != nil {
 			return err
 		}
 	case EXTERN_STRING >> 5:
-		// fmt.Println("Read ExternString")
-		err = readExternString(m, dis, &tagByte)
-		// if _, ok := (m.(*string)); ok {
-		// 	fmt.Println("Read ExternString", *(m.(*string)))
-		// }
+		fmt.Println("Read ExternString")
+		err = readExternString(m, dis, &tagByte, stringCache)
+		if _, ok := (m.(*string)); ok {
+			fmt.Println("Read ExternString", *(m.(*string)))
+		}
 
 		if err != nil {
 			return err
 		}
 	case ORDERED_MAP >> 5:
-		err = readOrderedMap(m, dis, tagByte)
+		err = readOrderedMap(m, dis, tagByte, stringCache)
 		return err
 	}
 	switch tagByte {
@@ -155,16 +168,34 @@ func readObject(m interface{}, dis *bytes.Buffer) error {
 		}
 		setValue(m, lg)
 	case SOLRDOCLST:
-		err := readSolrDocumentList(m, dis, tagByte)
+		fmt.Println("ReadSolrDocList")
+		err := readSolrDocumentList(m, dis, tagByte, stringCache)
 		if err != nil {
 			return err
 		}
+	case ITERATOR:
+		fmt.Println("ReadIterator")
+		err := readIterator(m, dis, tagByte, stringCache)
+		if err != nil {
+			return err
+		}
+	case END:
+		setValue(m, END_OBJ)
+		return nil
 	case SOLRDOC:
-		err := readSolrDocument(m, dis, tagByte)
+		fmt.Println("ReadSolrDoc")
+		err := readSolrDocument(m, dis, tagByte, stringCache)
+		if err != nil {
+			return err
+		}
+	case MAP:
+		fmt.Println("found MAP")
+		err := readMap(m, dis, tagByte, stringCache)
 		if err != nil {
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -176,7 +207,23 @@ type SolrDocumentList struct {
 	Docs     []interface{}
 }
 
-func readSolrDocument(m interface{}, dis *bytes.Buffer, tagByte byte) error {
+func readIterator(m interface{}, dis *bytes.Buffer, tagByte byte, stringCache *[]string) error {
+	results := []interface{}{}
+	for true {
+		var newItem interface{}
+		err := readVal(&newItem, dis, stringCache)
+		if err != nil {
+			return err
+		}
+		if newItem.(string) == END_OBJ {
+			break
+		}
+		results = append(results, newItem)
+	}
+	setValue(m, results)
+	return nil
+}
+func readSolrDocument(m interface{}, dis *bytes.Buffer, tagByte byte, stringCache *[]string) error {
 	tagByte, err := dis.ReadByte()
 	if err != nil {
 		return err
@@ -190,27 +237,30 @@ func readSolrDocument(m interface{}, dis *bytes.Buffer, tagByte byte) error {
 		var keyStr string
 		var keyIface interface{}
 		var obj interface{}
-		err := readVal(&keyIface, dis)
+		err := readVal(&keyIface, dis, stringCache)
 		if err != nil {
 			return err
 		}
 
 		if _, ok := keyIface.(string); ok {
+
 			keyStr = keyIface.(string)
-			err := readVal(&obj, dis)
+			err := readVal(&obj, dis, stringCache)
 			if err != nil {
 				return err
 			}
 			results[keyStr] = obj
+		} else {
+			fmt.Println("Found Non string", keyIface)
 		}
 	}
 	setValue(m, results)
 	return nil
 }
-func readSolrDocumentList(m interface{}, dis *bytes.Buffer, tagByte byte) error {
+func readSolrDocumentList(m interface{}, dis *bytes.Buffer, tagByte byte, stringCache *[]string) error {
 	lists := []interface{}{}
 	newList := SolrDocumentList{}
-	err := readVal(&lists, dis)
+	err := readVal(&lists, dis, stringCache)
 	if err != nil {
 		return err
 	}
@@ -221,7 +271,7 @@ func readSolrDocumentList(m interface{}, dis *bytes.Buffer, tagByte byte) error 
 	}
 
 	newList.Docs = []interface{}{}
-	err = readVal(&(newList.Docs), dis)
+	err = readVal(&(newList.Docs), dis, stringCache)
 	if err != nil {
 		return err
 	}
@@ -229,7 +279,7 @@ func readSolrDocumentList(m interface{}, dis *bytes.Buffer, tagByte byte) error 
 	return nil
 }
 
-func readArray(m interface{}, dis *bytes.Buffer, tagByte *byte) error {
+func readArray(m interface{}, dis *bytes.Buffer, tagByte *byte, stringCache *[]string) error {
 	sz, err := readSize(dis, *tagByte)
 	if err != nil {
 		return err
@@ -237,7 +287,7 @@ func readArray(m interface{}, dis *bytes.Buffer, tagByte *byte) error {
 	l := []interface{}{}
 	for i := 0; i < sz; i++ {
 		var data interface{}
-		readVal(&data, dis)
+		readVal(&data, dis, stringCache)
 		//fmt.Println("DATA", data)
 		l = append(l, data)
 	}
@@ -245,13 +295,15 @@ func readArray(m interface{}, dis *bytes.Buffer, tagByte *byte) error {
 	setValue(m, l)
 	return nil
 }
-func readExternString(m interface{}, dis *bytes.Buffer, tagByte *byte) error {
+func readExternString(m interface{}, dis *bytes.Buffer, tagByte *byte, stringCache *[]string) error {
 	idx, err := readSize(dis, *tagByte)
 	if err != nil {
 		return err
 	}
 	if idx != 0 {
 		//do something later
+		setValue(m, (*stringCache)[idx-1])
+		return nil
 	} else {
 		//only do this at the moment
 		//idx == 0 means it has a string value
@@ -259,36 +311,48 @@ func readExternString(m interface{}, dis *bytes.Buffer, tagByte *byte) error {
 		if err != nil {
 			return err
 		}
-		readStr(dis, false, tagByte, m)
+		err := readStr(dis, false, tagByte, m)
+		if err != nil {
+			return err
+		}
+		if _, ok := m.(*string); ok {
+			ll := m.(*string)
+			*stringCache = append(*stringCache, *ll)
+		} else {
+			ll := (*(m.(*interface{}))).(string)
+			*stringCache = append(*stringCache, ll)
+			//fmt.Println("Indirect type is:", reflect.Indirect(reflect.ValueOf(m)).Elem().Type())
+		}
+
 	}
 	return nil
 }
 
-// func readMap(m interface{}, dis *bytes.Buffer, tagByte byte) error {
-// 	sz,err := readVInt(dis,tagByte);
-// 	if err!=nil{
-// 		return err
-// 	}
-// 	newMap := map[interface{}]interface{}{}
-// 	for ii := 0; ii < sz; ii++ {
-// 		key1 := interface{}{}
-// 		err = readVal(&key1, dis)
-// 		if err != nil {
-// 			return err
-// 		}
-// 		var data interface{}
-// 		err = readVal(&data, dis)
-// 		if err != nil {
-// 			return err
-// 		}
-// 		//fmt.Println("FoundData", data)
-// 		newMap[key1] = data
-// 	}
-// 	setValue(m, newMap)
-// 	return nil
+func readMap(m interface{}, dis *bytes.Buffer, tagByte byte, stringCache *[]string) error {
+	sz, err := readVInt(dis, tagByte)
+	if err != nil {
+		return err
+	}
+	newMap := map[interface{}]interface{}{}
+	for ii := 0; ii < sz; ii++ {
+		var key1 interface{}
+		err = readVal(&key1, dis, stringCache)
+		if err != nil {
+			return err
+		}
+		var data interface{}
+		err = readVal(&data, dis, stringCache)
+		if err != nil {
+			return err
+		}
+		//fmt.Println("FoundData", data)
+		newMap[key1] = data
+	}
+	setValue(m, newMap)
+	return nil
 
-// }
-func readOrderedMap(m interface{}, dis *bytes.Buffer, tagByte byte) error {
+}
+func readOrderedMap(m interface{}, dis *bytes.Buffer, tagByte byte, stringCache *[]string) error {
 	// fmt.Println("Read Ordered Map")
 	sz, err := readSize(dis, tagByte)
 	if err != nil {
@@ -297,13 +361,13 @@ func readOrderedMap(m interface{}, dis *bytes.Buffer, tagByte byte) error {
 	newMap := map[string]interface{}{}
 	for ii := 0; ii < sz; ii++ {
 		key1 := ""
-		err := readVal(&key1, dis)
+		err := readVal(&key1, dis, stringCache)
 		if err != nil {
 			return err
 		}
 		//fmt.Println("FoundKey", key1)
 		var data interface{}
-		err = readVal(&data, dis)
+		err = readVal(&data, dis, stringCache)
 		if err != nil {
 			return err
 		}
@@ -317,9 +381,9 @@ func readOrderedMap(m interface{}, dis *bytes.Buffer, tagByte byte) error {
 func readSize(dis *bytes.Buffer, tagByte byte) (int, error) {
 	var sz int
 	sz = int(tagByte) & 0x1f
-	//fmt.Printf("ReadSize %x %x\n", sz, tagByte)
+	fmt.Printf("ReadSize %x %x\n", sz, tagByte)
 	if sz == int(0x1f) {
-		//fmt.Println("Ada tambahan")
+		fmt.Println("Ada tambahan")
 		szAddition, err := readVInt(dis, tagByte)
 		if err != nil {
 			return 0, err
