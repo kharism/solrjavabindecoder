@@ -2,7 +2,6 @@ package solrjavacodec
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"math"
 	"reflect"
@@ -84,7 +83,7 @@ const END_OBJ = "HELLOSOLDER"
 
 func readObject(m interface{}, dis *bytes.Buffer, stringCache *[]string) error {
 	tagByte, err := dis.ReadByte()
-	fmt.Printf("TAG %x\n", tagByte)
+	// fmt.Printf("TAG %x\n", tagByte)
 	if err != nil {
 		return err
 	}
@@ -92,7 +91,7 @@ func readObject(m interface{}, dis *bytes.Buffer, stringCache *[]string) error {
 	switch checkType {
 	case STR >> 5:
 		err = readStr(dis, readStringAsCharSeq, &tagByte, m)
-		fmt.Println("Read String", *(m.(*interface{})))
+		// fmt.Println("Read String", *(m.(*interface{})))
 		if err != nil {
 			return err
 		}
@@ -116,11 +115,11 @@ func readObject(m interface{}, dis *bytes.Buffer, stringCache *[]string) error {
 			return err
 		}
 	case EXTERN_STRING >> 5:
-		fmt.Println("Read ExternString")
+		// fmt.Println("Read ExternString")
 		err = readExternString(m, dis, &tagByte, stringCache)
-		if _, ok := (m.(*string)); ok {
-			fmt.Println("Read ExternString", *(m.(*string)))
-		}
+		// if _, ok := (m.(*string)); ok {
+		// 	fmt.Println("Read ExternString", *(m.(*string)))
+		// }
 
 		if err != nil {
 			return err
@@ -168,13 +167,13 @@ func readObject(m interface{}, dis *bytes.Buffer, stringCache *[]string) error {
 		}
 		setValue(m, lg)
 	case SOLRDOCLST:
-		fmt.Println("ReadSolrDocList")
+		// fmt.Println("ReadSolrDocList")
 		err := readSolrDocumentList(m, dis, tagByte, stringCache)
 		if err != nil {
 			return err
 		}
 	case ITERATOR:
-		fmt.Println("ReadIterator")
+		// fmt.Println("ReadIterator")
 		err := readIterator(m, dis, tagByte, stringCache)
 		if err != nil {
 			return err
@@ -183,13 +182,13 @@ func readObject(m interface{}, dis *bytes.Buffer, stringCache *[]string) error {
 		setValue(m, END_OBJ)
 		return nil
 	case SOLRDOC:
-		fmt.Println("ReadSolrDoc")
+		// fmt.Println("ReadSolrDoc")
 		err := readSolrDocument(m, dis, tagByte, stringCache)
 		if err != nil {
 			return err
 		}
 	case MAP:
-		fmt.Println("found MAP")
+		// fmt.Println("found MAP")
 		err := readMap(m, dis, tagByte, stringCache)
 		if err != nil {
 			return err
@@ -251,7 +250,7 @@ func readSolrDocument(m interface{}, dis *bytes.Buffer, tagByte byte, stringCach
 			}
 			results[keyStr] = obj
 		} else {
-			fmt.Println("Found Non string", keyIface)
+			// fmt.Println("Found Non string", keyIface)
 		}
 	}
 	setValue(m, results)
@@ -381,9 +380,9 @@ func readOrderedMap(m interface{}, dis *bytes.Buffer, tagByte byte, stringCache 
 func readSize(dis *bytes.Buffer, tagByte byte) (int, error) {
 	var sz int
 	sz = int(tagByte) & 0x1f
-	fmt.Printf("ReadSize %x %x\n", sz, tagByte)
+	// fmt.Printf("ReadSize %x %x\n", sz, tagByte)
 	if sz == int(0x1f) {
-		fmt.Println("Ada tambahan")
+		// fmt.Println("Ada tambahan")
 		szAddition, err := readVInt(dis, tagByte)
 		if err != nil {
 			return 0, err

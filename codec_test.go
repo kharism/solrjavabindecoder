@@ -37,7 +37,7 @@ func BenchmarkDecodeBin(b *testing.B) {
 }
 
 func TestEqual(t *testing.T) {
-	// t.Skip()
+	t.Skip()
 	client := http.Client{}
 	client2 := http.Client{}
 
