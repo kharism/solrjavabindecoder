@@ -15,7 +15,7 @@ func BenchmarkDecodeJson(b *testing.B) {
 	client := http.Client{}
 	obj := map[string]interface{}{}
 	for i := 0; i < b.N; i++ {
-		req, _ := http.NewRequest("GET", "http://localhost:8983/solr/edmsrc/select?indent=off&q=*:*&wt=json", nil)
+		req, _ := http.NewRequest("GET", "http://localhost:8983/solr/movies/select?indent=off&q=*:*&wt=json&rows=100", nil)
 		resp, _ := client.Do(req)
 		respByte, _ := ioutil.ReadAll(resp.Body)
 		resp.Body.Close()
@@ -27,7 +27,7 @@ func BenchmarkDecodeBin(b *testing.B) {
 	client := http.Client{}
 	obj := map[string]interface{}{}
 	for i := 0; i < b.N; i++ {
-		req, _ := http.NewRequest("GET", "http://localhost:8983/solr/edmsrc/select?indent=off&q=*:*&wt=javabin", nil)
+		req, _ := http.NewRequest("GET", "http://localhost:8983/solr/movies/select?indent=off&q=*:*&wt=javabin&rows=100", nil)
 		resp, _ := client.Do(req)
 		respByte, _ := ioutil.ReadAll(resp.Body)
 		resp.Body.Close()
@@ -44,8 +44,8 @@ func TestEqual(t *testing.T) {
 	obj1 := map[string]interface{}{}
 	obj2 := map[string]interface{}{}
 
-	urlJson := "http://localhost:8983/solr/edmsrc/select?indent=off&q=*:*&wt=json"
-	urlJavabin := "http://localhost:8983/solr/edmsrc/select?q=*:*&wt=javabin"
+	urlJson := "http://localhost:8983/solr/movies/select?indent=off&q=*:*&wt=json"
+	urlJavabin := "http://localhost:8983/solr/movies/select?q=*:*&wt=javabin"
 
 	reqJson, _ := http.NewRequest("GET", urlJson, nil)
 	reqJavabin, _ := http.NewRequest("GET", urlJavabin, nil)
