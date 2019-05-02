@@ -3,5 +3,6 @@ ADD testDocker/movie.json /opt/
 RUN start-local-solr -x && \
     bin/solr create_core -c "movies" -p 8983 && \
     bin/post -c "movies" /opt/movie.json
+EXPOSE 8983
 ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["solr-foreground"]
