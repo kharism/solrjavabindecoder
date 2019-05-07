@@ -1,5 +1,5 @@
 
-test:
+test: dep
 	@go test -failfast -short .
 dep:
 	@echo "retrieving dependency" 
