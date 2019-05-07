@@ -11,23 +11,23 @@ import (
 	tk "github.com/eaciit/toolkit"
 )
 
-func BenchmarkDecodeJson(b *testing.B) {
+func BenchmarkOnlineDecodeJson(b *testing.B) {
 	client := http.Client{}
 	obj := map[string]interface{}{}
 	for i := 0; i < b.N; i++ {
-		req, _ := http.NewRequest("GET", "http://localhost:8983/solr/movies/select?indent=off&q=*:*&wt=json&rows=100", nil)
+		req, _ := http.NewRequest("GET", "http://localhost:8983/solr/movies/select?indent=off&q=*:*&wt=json&rows=1000", nil)
 		resp, _ := client.Do(req)
 		respByte, _ := ioutil.ReadAll(resp.Body)
 		resp.Body.Close()
 		json.Unmarshal(respByte, &obj)
-		tk.JsonStringIndent(obj, " ")
+		//tk.JsonStringIndent(obj, " ")
 	}
 }
-func BenchmarkDecodeBin(b *testing.B) {
+func BenchmarkOnlineDecodeBin(b *testing.B) {
 	client := http.Client{}
 	obj := map[string]interface{}{}
 	for i := 0; i < b.N; i++ {
-		req, _ := http.NewRequest("GET", "http://localhost:8983/solr/movies/select?indent=off&q=*:*&wt=javabin&rows=100", nil)
+		req, _ := http.NewRequest("GET", "http://localhost:8983/solr/movies/select?indent=off&q=*:*&wt=javabin&rows=1000", nil)
 		resp, _ := client.Do(req)
 		respByte, _ := ioutil.ReadAll(resp.Body)
 		resp.Body.Close()
@@ -35,7 +35,20 @@ func BenchmarkDecodeBin(b *testing.B) {
 
 	}
 }
-
+func BenchmarkOfflineJson(b *testing.B) {
+	obj := map[string]interface{}{}
+	for i := 0; i < b.N; i++ {
+		ii, _ := ioutil.ReadFile("sample.json")
+		json.Unmarshal(ii, &obj)
+	}
+}
+func BenchmarkOfflineJavabin(b *testing.B) {
+	obj := map[string]interface{}{}
+	for i := 0; i < b.N; i++ {
+		ii, _ := ioutil.ReadFile("samplejavabin.bin")
+		UnmarshalByte(&obj, ii)
+	}
+}
 func TestEqual(t *testing.T) {
 	t.Skip()
 	client := http.Client{}
