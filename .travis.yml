@@ -6,5 +6,8 @@ stages:
   - build
 unit_tests:
   stage: test
+  before_script:
+    - go get -v github.com/eaciit/toolkit
+    - go get -v github.com/eaciit/errorlib
   script:
     - make test
