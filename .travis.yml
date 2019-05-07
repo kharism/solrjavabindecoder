@@ -1,5 +1,6 @@
-language: golang:1.12
-
+language: go
+go:
+  - "1.12"
 stages:
   - test
   - build
