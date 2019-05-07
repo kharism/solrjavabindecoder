@@ -3,11 +3,9 @@ go:
   - "1.12"
 stages:
   - test
-  - build
 unit_tests:
   stage: test
   before_script:
-    - go get -v github.com/eaciit/toolkit
-    - go get -v github.com/eaciit/errorlib
+    - make dep
   script:
     - make test
